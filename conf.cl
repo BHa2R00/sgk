@@ -1,0 +1,8 @@
+(defvar *file-in* "./lc.gds")
+;(defvar *file-in* "./lc1.gds")
+;(defvar *file-in* "./lc2.gds")
+;(defvar *file-in* "./lc3.gds")
+;(defvar *file-in* "./out1.gds")
+;(defvar *file-in* "./BooleanTest01.gds")
+;(defvar *file-in* "./1K_polyg.gds")
+(defvar *file-out* "./out.gds")
