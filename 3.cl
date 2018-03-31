@@ -10,7 +10,7 @@
 	(if (= bt *RT_LIBNAME*)
 	  (progn
 		(setq oldlist (push (reverse (list (rd-dt-string str-in "") "RT_LIBNAME")) oldlist))
-		(f003 str-in oldlist))
+		(sgk-f003 str-in oldlist))
 	  (progn
 		(rd-rt-libname str-in oldlist)))))
 
@@ -160,10 +160,10 @@
   (let ((srctree '()))
 	(with-open-file (str-in fi :direction	:input
 							:element-type	'(unsigned-byte 8))
-	  (setq srctree (f003 str-in srctree))
+	  (setq srctree (sgk-f003 str-in srctree))
 	  (reverse (push "RT_ENDLIB" srctree)))))
 
-(defun f003 (str-in oldlist)
+(defun sgk-f003 (str-in oldlist)
   (let ((bt (rd-u2 str-in)) (newlist '()))
 	(cond
 	  ((= bt *RT_BGNLIB*) (progn
@@ -176,38 +176,38 @@
 							))
 	  ((= bt *RT_HEADER*) (progn
 							(push (list "RT_HEADER" (rd-u2 str-in)) oldlist)
-							(f003 str-in oldlist)
+							(sgk-f003 str-in oldlist)
 							))
 	  ((= bt *RT_UNITS*) (progn
 						   (push "RT_UNITS" newlist)
 						   (push (r642d (rd-u8 str-in)) newlist)
 						   (push (r642d (rd-u8 str-in)) newlist)
-						   (push (reverse (car (f004 str-in newlist))) oldlist)
+						   (push (reverse (car (sgk-f004 str-in newlist))) oldlist)
 						   ))
-	  (t (f003 str-in oldlist)))))
+	  (t (sgk-f003 str-in oldlist)))))
 
-(defun f001 (str-in oldlist)
+(defun sgk-f001 (str-in oldlist)
   (let ((bt (read-byte str-in nil 'eof)))
 	(if (eql bt 'eof)
 	  (list oldlist)
-	  (f001 str-in oldlist))))
+	  (sgk-f001 str-in oldlist))))
 
-(defun f004 (str-in oldlist)
+(defun sgk-f004 (str-in oldlist)
   (let ((bt (rd-u2 str-in)) (newlist '()))
 	(if (eql bt *RT_ENDLIB*)
 	  (progn
-		(f001 str-in oldlist))
+		(sgk-f001 str-in oldlist))
 	  (cond
 		((= bt *RT_BGNSTR*) (progn
-							  (push (reverse (f005 str-in)) oldlist)
-							  (f004 str-in oldlist)
+							  (push (reverse (sgk-f005 str-in)) oldlist)
+							  (sgk-f004 str-in oldlist)
 							  ))
-		(t (f004 str-in oldlist))))))
+		(t (sgk-f004 str-in oldlist))))))
 
 (defvar strlist '())
 (defvar elm '())
 
-(defun f005 (str-in)
+(defun sgk-f005 (str-in)
   (let ((bt) (rtl))
   (setq strlist (reverse (list 
 				  (list "RT_BGNSTR" (rd-dt-bitarray str-in 2 12)
@@ -220,38 +220,38 @@
 	(setq elm '())
 	(cond
 	  ((= bt *RT_BOUNDARY*) (progn
-							  (f006 str-in)
+							  (sgk-f006 str-in)
 							  (push (reverse elm) strlist)
 							  ))
 	  ((= bt *RT_PATH*) (progn
-						  (f016 str-in)
+						  (sgk-f016 str-in)
 						  (push (reverse elm) strlist)
 						  ))
 	  ((= bt *RT_SREF*) (progn
-						  (f026 str-in)
+						  (sgk-f026 str-in)
 						  (push (reverse elm) strlist)
 						  ))
 	  ((= bt *RT_AREF*) (progn
-						  (f036 str-in)
+						  (sgk-f036 str-in)
 						  (push (reverse elm) strlist)
 						  ))
 	  ((= bt *RT_TEXT*) (progn
-						  (f046 str-in)
+						  (sgk-f046 str-in)
 						  (push (reverse elm) strlist)
 						  ))
 	  ((= bt *RT_NODE*) (progn
-						  (f056 str-in)
+						  (sgk-f056 str-in)
 						  (push (reverse elm) strlist)
 						  ))
 	  ((= bt *RT_BOX*) (progn
-						 (f066 str-in)
+						 (sgk-f066 str-in)
 						 (push (reverse elm) strlist)
 						 ))
 	  )
 	(when (= bt *RT_ENDSTR*)
 	  (return (push "RT_ENDSTR" strlist))))))
 
-(defun f006 (str-in)
+(defun sgk-f006 (str-in)
   (let ((bt 0) (xy) (rtl))
 	(setq elm '("RT_BOUNDARY"))
 	(loop
@@ -272,7 +272,7 @@
 		(push "RT_ENDEL" elm)
 		(return elm)))))
 
-(defun f016 (str-in)
+(defun sgk-f016 (str-in)
   (let ((bt 0) (xy) (rtl))
 	(setq elm '("RT_PATH"))
 	(loop
@@ -299,7 +299,7 @@
 		(push "RT_ENDEL" elm)
 		(return elm)))))
 
-(defun f026 (str-in)
+(defun sgk-f026 (str-in)
   (let ((bt 0) (xy) (rtl))
 	(setq elm '( "RT_SREF"))
 	(loop
@@ -326,7 +326,7 @@
 		(push "RT_ENDEL" elm)
 		(return elm)))))
 
-(defun f036 (str-in)
+(defun sgk-f036 (str-in)
   (let ((bt 0) (rtl))
 	(setq elm '("RT_AREF"))
 	(loop
@@ -353,7 +353,7 @@
 		(push "RT_ENDEL" elm)
 		(return elm)))))
 
-(defun f046 (str-in)
+(defun sgk-f046 (str-in)
   (let ((bt 0) (rtl 0))
 	(setq elm '("RT_TEXT"))
 	(loop
@@ -389,7 +389,7 @@
 		(push "RT_ENDEL" elm)
 		(return elm)))))
 
-(defun f056 (str-in)
+(defun sgk-f056 (str-in)
   (let ((bt) (rtl))
 	(setq elm '("RT_NODE"))
 	(loop
@@ -399,7 +399,7 @@
 		(push (rd-u2 str-in) elm)
 		(return elm)))))
 
-(defun f066 (str-in)
+(defun sgk-f066 (str-in)
   (let ((bt) (rtl))
 	(setq elm '("RT_BOX"))
 	(loop
@@ -451,7 +451,7 @@
 (defun wt-dt-real64 (str-out d)
   (wt-u8 str-out (d2r64 d)))
 
-(defun f100 (fo tree)
+(defun sgk-f100 (fo tree)
   (let ((lst (flatten-tree tree)) (sel 0))
 	(setq lst (make-array (length lst) :initial-contents lst))
 	(with-open-file (str-out fo :direction	:output
@@ -460,7 +460,7 @@
 							 :element-type	'(unsigned-byte 8))
 	  (loop for n from 0 to (1- (array-total-size lst)) do
 			(cond
-			  ((stringp (aref lst n)) (f101 str-out lst n))
+			  ((stringp (aref lst n)) (sgk-f101 str-out lst n))
 			  ))
 )))
 
@@ -471,7 +471,7 @@
 
 (defun length2 (ary))
 
-(defun f101 (str-out lst n)
+(defun sgk-f101 (str-out lst n)
   (cond
 	((string= "RT_HEADER" (aref lst n)) (progn
 										  (wt-u2 str-out #x0006)

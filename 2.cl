@@ -7,7 +7,7 @@
 
 (defun sgk-rd-gds (fi) (f-return-srctree fi))
 
-(defun sgk-wt-gds (fo tree) (f100 fo (flatten-tree tree)))
+(defun sgk-wt-gds (fo tree) (sgk-f100 fo (flatten-tree tree)))
 
 (defun sgk-lib (name units)
   (list (list "RT_HEADER" 5)

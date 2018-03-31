@@ -54,7 +54,8 @@
 ;(dolist (n (get-units srctree1))
 ;  (format t "~a~%" (get-str-name n)))
 
-(sgk-ls-cell srctree1)
+(sgk-ls-cell srctree)
+;(sgk-ls-cell srctree1)
 
 (defvar outlib1
   (sgk-lib "shit"
@@ -69,10 +70,29 @@
 			 (get-str (get-units srctree1) "CORE11")
 			 (sgk-cell "shit"
 					   (list
-						 (sgk-sref "CORE00" #x8000 0.0d0 #(0 0))
-						 (sgk-sref "CORE01" #x8000 90.0d0 #(0 0))
-						 (sgk-sref "CORE10" #x8000 185.0d0 #(0 0))
-						 (sgk-sref "CORE11" #x8000 280.0d0 #(0 0))
+						 (sgk-sref "CORE00" #x0000 0.0d0 #(0 0))
+						 (sgk-sref "CORE01" #x8000 0.0d0 #(0 0))
+						 (sgk-sref "CORE10" #x0000 90.0d0 #(0 0))
+						 (sgk-sref "CORE11" #x8000 90.0d0 #(995 0))
+						 ;(sgk-sref "CORE01" #x8000 90.0d0 #(0 0))
+						 ;(sgk-sref "CORE10" #x8000 185.0d0 #(0 0))
+						 ;(sgk-sref "CORE11" #x8000 45.0d0 #(0 0))
+						 ))
+			 )))
+
+(defvar outlib2
+  (sgk-lib "shit"
+		   (list
+			 (get-str (get-units srctree) "via3")
+			 (get-str (get-units srctree) "bitcell")
+			 (get-str (get-units srctree) "cell2x2")
+			 (get-str (get-units srctree) "cell2x2_vdd")
+			 (get-str (get-units srctree) "cell2x2_gnd")
+			 (get-str (get-units srctree) "cell2x4")
+			 (sgk-cell "shit1"
+					   (list
+						 (sgk-sref "cell2x4" #x0000 0.0d0 #(0 0))
+						 (sgk-sref "cell2x4" #x0000 0.0d0 #(2640 0))
 						 ))
 			 )))
 
@@ -128,5 +148,6 @@
 ;		"RT_ENDLIB"))
 
 ;(format t "~a~%" (get-str (get-units srctree) "bitumask"))
-;(format t "~a~%" outtree)
-(sgk-wt-gds "./out.gds" outlib1)
+(format t "~a~%" outlib2)
+
+(sgk-wt-gds "./out.gds" outlib2)

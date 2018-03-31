@@ -85,3 +85,4 @@
 (defvar	*PLEX_HEAD*			#x01000000)
 (defvar	*PLEX_VALID_BITS*	#x00FFFFFF)
 
+(defvar *anchor_layer_number* 60)
