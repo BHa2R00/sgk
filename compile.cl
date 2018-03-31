@@ -7,6 +7,13 @@
 ;  :executable t
 ;  :toplevel 'sgk)
 
+(declaim (optimize (speed 3)
+				   (compilation-speed 0)
+				   (safety 0)
+				   (debug 0)))
+
 (compile-file "./3.cl")
+;(compile-file "./4.cl")
 (load "./2.cl")
-(compile-file "./2.cl" :output-file "./sgk")
+(compile-file "./2.cl")
+

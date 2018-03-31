@@ -6,5 +6,3 @@ all:rw.c
 	$(LD) -shared -o ./rw.so ./rw.o
 	@rm ./rw.o
 	$(CL) --script ./compile.cl --no-userinit --no-sysinit --disable-debugger --end-toplevel-options
-	@chmod +x ./sgk.fasl
-	@mv ./sgk.fasl ./sgk
