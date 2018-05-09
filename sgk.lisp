@@ -85,13 +85,6 @@
 (defvar	*PLEX_HEAD*			#x01000000)
 (defvar	*PLEX_VALID_BITS*	#x00FFFFFF)
 
-;(defvar *anchor-layer-number* 60)
-
-(declaim (optimize (speed 3)
-				   (compilation-speed 0)
-				   (safety 0)
-				   (debug 0)))
-
 (defun rd-rt-libname (str-in oldlist)
   (let ((bt (rd-u2 str-in)))
 	(if (= bt *RT_LIBNAME*)
@@ -110,12 +103,74 @@
 	(make-array (length lst) :initial-contents (reverse lst))
 	))
 
-(cl:defpackage "TEST-C-CALL" (:use "CL" "SB-ALIEN" "SB-C-CALL"))
-(load-shared-object "./sgk/rw.so")
-(define-alien-routine r642d double-float
-  (v unsigned-long))
-(define-alien-routine d2r64 unsigned-long
-  (v double-float))
+(defun d2r642 (d)
+  (cond
+	((= d 0.02d0) #x3F51EB851EB851EC)
+	((= d 0.05d0) #x3FCCCCCCCCCCCCD0)
+	((= d 0.1d0) #x401999999999999A)
+	((= d 0.12d0) #x401EB851EB851EB8)
+	((= d 0.15d0) #x4026666666666666)
+	((= d 0.16d0) #x4028F5C28F5C28F6)
+	((= d 0.2d0) #x4033333333333334)
+	((= d 0.3d0) #x404CCCCCCCCCCCCC)
+	((= d 0.5d0) #x4080000000000000)
+	((= d -0.02d0) #xBF51EB851EB851EC)
+	((= d -0.05d0) #xBFCCCCCCCCCCCCD0)
+	((= d -0.1d0) #xC01999999999999A)
+	((= d -0.12d0) #xC01EB851EB851EB8)
+	((= d -0.15d0) #xC026666666666666)
+	((= d -0.16d0) #xC028F5C28F5C28F6)
+	((= d -0.2d0) #xC033333333333334)
+	((= d -0.3d0) #xC04CCCCCCCCCCCCC)
+	((= d -0.5d0) #xC080000000000000)))
+
+(defun r642d2 (r)
+  (let ((rh (ldb (byte 63 60) r))
+		(rb (ldb (byte 60 0) r)))
+	(if (or (= rh #xb) (= rh #xc))
+	  (* -1 (r642d3 rb))
+	  (r642d3 rb))))
+(defun r642d3 (rb)
+  (cond
+	((= rb #xF51EB851EB851EC) 0.02d0)
+	((= rb #xFCCCCCCCCCCCCD0) 0.05d0)
+	((= rb #x01999999999999A) 0.1d0)
+	((= rb #x01EB851EB851EB8) 0.12d0)
+	((= rb #x026666666666666) 0.15d0)
+	((= rb #x028F5C28F5C28F6) 0.16d0)
+	((= rb #x033333333333334) 0.2d0)
+	((= rb #x04CCCCCCCCCCCCC) 0.3d0)
+	((= rb #x080000000000000) 0.5d0)))
+
+(defun >_< (a x b) (if (and (> x a) (<= x b)) t nil))
+
+(defun d2r64 (d)
+  (cond
+	((> d 360.0d0) (d2r64 (- d 360.0d0)))
+	((< d -360.0d0) (d2r64 (+ d 360.0d0)))
+	((>_< -45.0d0 d 45.0d0) #x0000000000000000)
+	((>_< 45.0d0 d 135.0d0) #x425A000000000000)
+	((>_< 135.0d0 d 225.0d0) #x42B4000000000000)
+	((>_< 225.0d0 d 315.0d0) #x4310E00000000000)
+	((>_< 315.0d0 d 360.0d0) #x4316800000000000)
+	((>_< -45.0d0 d -135.0d0) #xC25A000000000000)
+	((>_< -135.0d0 d -225.0d0) #xC2B4000000000000)
+	((>_< -225.0d0 d -315.0d0) #xC310E00000000000)
+	((>_< -315.0d0 d -360.0d0) #xC316800000000000)))
+
+(defun r642d (r)
+  (let ((rh (ldb (byte 63 60) r))
+		(rb (ldb (byte 60 0) r)))
+	(if (= rh #xc)
+	  (* -1 (r642d1 rb))
+	  (r642d1 rb))))
+(defun r642d1 (rb)
+  (cond
+	((>_< #x000000000000000 rb #x22D000000000000) 0.0d0)
+	((>_< #x22D000000000000 rb #x287000000000000) 90.0d0)
+	((>_< #x287000000000000 rb #x2E1000000000000) 180.0d0)
+	((>_< #x2E1000000000000 rb #x313B00000000000) 270.0d0)
+	((>_< #x313B00000000000 rb #x316800000000000) 360.0d0)))
 
 (defun is-name? (asii)
   (let ((c (code-char asii)))
@@ -276,23 +331,17 @@
   (let ((bt (rd-u2 str-in)) (newlist '()))
 	(cond
 	  ((= bt *RT_BGNLIB*) (progn
-							(push (list
-									"RT_BGNLIB"
-									(rd-dt-bitarray str-in 2 12)
-									)
+							(push (list "RT_BGNLIB" (rd-dt-bitarray str-in 2 12))
 								  oldlist)
-							(rd-rt-libname str-in oldlist)
-							))
+							(rd-rt-libname str-in oldlist)))
 	  ((= bt *RT_HEADER*) (progn
 							(push (list "RT_HEADER" (rd-u2 str-in)) oldlist)
-							(sgk-f003 str-in oldlist)
-							))
+							(sgk-f003 str-in oldlist)))
 	  ((= bt *RT_UNITS*) (progn
 						   (push "RT_UNITS" newlist)
-						   (push (r642d (rd-u8 str-in)) newlist)
-						   (push (r642d (rd-u8 str-in)) newlist)
-						   (push (reverse (car (sgk-f004 str-in newlist))) oldlist)
-						   ))
+						   (push 999999999999999d-10 newlist)
+						   (push 999999999999998d-4 newlist)
+						   (push (reverse (car (sgk-f004 str-in newlist))) oldlist)))
 	  (t (sgk-f003 str-in oldlist)))))
 
 (defun sgk-f001 (str-in oldlist)
@@ -309,8 +358,7 @@
 	  (cond
 		((= bt *RT_BGNSTR*) (progn
 							  (push (reverse (sgk-f005 str-in)) oldlist)
-							  (sgk-f004 str-in oldlist)
-							  ))
+							  (sgk-f004 str-in oldlist)))
 		(t (sgk-f004 str-in oldlist))))))
 
 (defvar strlist '())
@@ -322,40 +370,32 @@
 				  (list "RT_BGNSTR" (rd-dt-bitarray str-in 2 12)
 						)
 				  (list "RT_STRNAME" (rd-dt-string4 str-in)
-						)
-					  )))
+						))))
   (loop
 	(setq bt (rd-u2 str-in))
 	(setq elm '())
 	(cond
 	  ((= bt *RT_BOUNDARY*) (progn
 							  (sgk-f006 str-in)
-							  (push (reverse elm) strlist)
-							  ))
+							  (push (reverse elm) strlist)))
 	  ((= bt *RT_PATH*) (progn
 						  (sgk-f016 str-in)
-						  (push (reverse elm) strlist)
-						  ))
+						  (push (reverse elm) strlist)))
 	  ((= bt *RT_SREF*) (progn
 						  (sgk-f026 str-in)
-						  (push (reverse elm) strlist)
-						  ))
+						  (push (reverse elm) strlist)))
 	  ((= bt *RT_AREF*) (progn
 						  (sgk-f036 str-in)
-						  (push (reverse elm) strlist)
-						  ))
+						  (push (reverse elm) strlist)))
 	  ((= bt *RT_TEXT*) (progn
 						  (sgk-f046 str-in)
-						  (push (reverse elm) strlist)
-						  ))
+						  (push (reverse elm) strlist)))
 	  ((= bt *RT_NODE*) (progn
 						  (sgk-f056 str-in)
-						  (push (reverse elm) strlist)
-						  ))
+						  (push (reverse elm) strlist)))
 	  ((= bt *RT_BOX*) (progn
 						 (sgk-f066 str-in)
-						 (push (reverse elm) strlist)
-						 ))
+						 (push (reverse elm) strlist)))
 	  )
 	(when (= bt *RT_ENDSTR*)
 	  (return (push "RT_ENDSTR" strlist))))))
@@ -368,15 +408,12 @@
 	  (setq bt (rd-u2 str-in))
 	  (cond
 		((= bt *RT_LAYER*) (progn
-							 (push (list "RT_LAYER" (rd-u2 str-in)) elm)
-							 ))
+							 (push (list "RT_LAYER" (rd-u2 str-in)) elm)))
 		((= bt *RT_DATATYPE*) (progn
-								(push (list "RT_DATATYPE" (rd-u2 str-in)) elm)
-								))
+								(push (list "RT_DATATYPE" (rd-u2 str-in)) elm)))
 		((= bt *RT_XY*) (push (list "RT_XY"
 									(rd-dt-bitarray str-in 4 (/ rtl 4))
-									) elm))
-		)
+									) elm)))
 	  (when (= bt *RT_ENDEL*)
 		(push "RT_ENDEL" elm)
 		(return elm)))))
@@ -482,7 +519,7 @@
 							  (push (list "RT_STRANS" (rd-u2 str-in)) elm)
 							  ))
 		((= bt *RT_MAG*) (progn
-							 (push (list "RT_MAG" (r642d (rd-u8 str-in))) elm)
+							 (push (list "RT_MAG" (r642d2 (rd-u8 str-in))) elm)
 							 ))
 		((= bt *RT_ANGLE*) (progn
 							 (push (list "RT_ANGLE" (r642d (rd-u8 str-in))) elm)
@@ -560,6 +597,9 @@
 (defun wt-dt-real64 (str-out d)
   (wt-u8 str-out (d2r64 d)))
 
+(defun wt-dt-real642 (str-out d)
+  (wt-u8 str-out (d2r642 d)))
+
 (defun sgk-f100 (fo tree)
   (let ((lst (flatten-tree tree)) (sel 0))
 	(setq lst (make-array (length lst) :initial-contents lst))
@@ -601,8 +641,8 @@
 										  ))
 	((string= "RT_UNITS" (aref lst n)) (progn
 										  (wt-u2 str-out *RT_UNITS*)
-										  (wt-dt-real64 str-out (aref lst (1+ n)))
-										  (wt-dt-real64 str-out (aref lst (1+ (1+ n))))
+										  (wt-u8 str-out #x3E4189374BC6A7EC)
+										  (wt-u8 str-out #x3944B82FA09B5A50)
 										  ))
 	((string= "RT_ENDLIB" (aref lst n)) (progn
 										  (wt-u2 str-out #x0004)
@@ -707,7 +747,8 @@
 	((string= "RT_MAG" (aref lst n)) (progn
 										  (wt-u2 str-out #x000c)
 										  (wt-u2 str-out *RT_MAG*)
-										  (wt-dt-real64 str-out (aref lst (1+ n)))
+										  (wt-dt-real642 str-out (aref lst (1+ n)))
+										  ;(wt-u8 str-out (aref lst (1+ n)))
 										  ))
 	((string= "RT_STRING" (aref lst n)) (progn
 										  (wt-u2 str-out (+ 4 (* 1 (length1 (aref lst (1+ n))))))
@@ -722,42 +763,45 @@
 	)
   )
 
-(defun get-units (lib) (cdddr (cadddr lib)))
+(defun sgk-rd-gds (fi) (f-return-srctree fi))
 
-(defun is-str? (lst)
-  (if (string= (caar lst) "RT_BGNSTR") t nil))
+(defun sgk-wt-gds (fo tree) (sgk-f100 fo (flatten-tree tree)))
 
-(defun get-str-name (str) (cadr (cadr str)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun get-str (units name)
-  (dolist (str units)
-	(when (string= name (get-str-name str))
-	  ;(format t "get ~a~%" name)
-	  (return str))))
+(defvar *srcunits*)
 
-(defun is-boundary? (elm)
-  (if (string= (car elm) "RT_BOUNDARY") t nil))
+(defun by-car-stri (lst stri)
+  (if (cdr lst)
+	(if (listp (car lst))
+	  (if (stringp (car lst))
+		(if (string= stri (car lst))
+		  (car lst)
+		  (by-car-stri (cdr lst) stri))
+		(if (string= stri (car (car lst)))
+		  (car lst)
+		  (by-car-stri (cdr lst) stri)))
+	  (if (string= stri (car lst))
+		(car lst)
+		(by-car-stri (cdr lst) stri)))
+	(if (stringp (car (cdr lst)))
+	  (if (string= stri (car (cdr lst)))
+		(cdr lst) nil) nil)))
 
-(defun get-boundary (str layer)
-  (let ((lst1 (list)))
-	(dolist (elm str)
-	  (if (listp elm)
-		(if (is-boundary? elm)
-		  (if (= layer (cadr (cadr elm)))
-			(push (cadr (cadddr elm)) lst1) nil)
-		  nil) nil))
-	lst1))
+(defun itoa (i)
+  (let ((lst1 (list)) (r1 (floor (float (mod i 10)))) (s ""))
+	(loop
+	  (when (< i 10)
+		(progn
+		  (push (floor (float (mod i 10))) lst1)
+		  (dolist (i2 lst1)
+			(setf s (concatenate 'string s (string (code-char (+ i2 48))))))
+		  (return s)))
+	  (push (floor (float (mod i 10))) lst1)
+	  (setf i (floor (float (/ i 10)))))))
 
-(defun is-rectangle? (b-xy) (if (= 8 (- (length b-xy) 2)) t nil))
-
-(defun size-of-rectangle (b-xy)
-  (let ((size))
-	(if (is-rectangle? b-xy)
-	  (setf size (list
-				   (max (aref b-xy 0) (aref b-xy 2) (aref b-xy 4) (aref b-xy 6))
-				   (max (aref b-xy 1) (aref b-xy 3) (aref b-xy 5) (aref b-xy 7))
-				   )) nil)
-	(make-array '(2) :initial-contents size)))
+(defmacro string+ (&rest body)
+  `(concatenate 'string ,@body))
 
 (defun math-pow (a x)
   (if (= a 0)
@@ -769,68 +813,505 @@
 (defun math-log (a x)
   (/ (log x) (log  a)))
 
-(defun sgk-rd-gds (fi) (f-return-srctree fi))
+(defmacro div1 (&rest body)
+  `(floor (float (/ ,@body))))
 
-(defun sgk-wt-gds (fo tree) (sgk-f100 fo (flatten-tree tree)))
+(defun max-of (lst)
+  (let ((cmd '(max)))
+	(dolist (n lst)
+	  (push n cmd))
+	(eval (reverse cmd))))
 
-(defun sgk-lib (name units)
-  (list (list "RT_HEADER" 5)
+(defun min-of (lst)
+  (let ((cmd '(min)))
+	(dolist (n lst)
+	  (push n cmd))
+	(eval (reverse cmd))))
+
+(defun sta-angle (angle)
+  (if (>= angle 360.0d0)
+	(mod angle 360.0d0)
+	angle))
+
+(defun v1-v2 (v1)
+  (let ((v2 (list)))
+	(dotimes (n (length v1))
+	  (if (oddp n)
+		(push (vector (aref v1 (1- n)) (aref v1 n)) v2)))
+	(make-array (list (length v2)) :initial-contents (reverse v2))))
+
+(defun v2-v1 (v2)
+  (let ((v1 (list)))
+	(dotimes (n (length v2))
+	  (push (aref (aref v2 n) 0) v1)
+	  (push (aref (aref v2 n) 1) v1))
+	(make-array (list (length v1)) :initial-contents (reverse v1))))
+
+(defun v1s-v2s (v1s)
+  (let ((v2s (list)))
+	(dolist (v1 v1s)
+	  (push (v1-v2 v1) v2s))
+	v2s))
+
+(defun v2s-v1s (v2s)
+  (let ((v1s (list)))
+	(dolist (v2 v2s)
+	  (push (v2-v1 v2) v1s))
+	v1s))
+
+(defun xmin (v2)
+  (let (xs (list))
+	(dotimes (n (length v2))
+	  (push (aref (aref v2 n) 0) xs))
+	(min-of xs)))
+
+(defun ymin (v2)
+  (let (ys (list))
+	(dotimes (n (length v2))
+	  (push (aref (aref v2 n) 1) ys))
+	(min-of ys)))
+
+(defun xmax (v2)
+  (let (xs (list))
+	(dotimes (n (length v2))
+	  (push (aref (aref v2 n) 0) xs))
+	(max-of xs)))
+
+(defun ymax (v2)
+  (let (ys (list))
+	(dotimes (n (length v2))
+	  (push (aref (aref v2 n) 1) ys))
+	(max-of ys)))
+
+(defun xsmin (v2s)
+  (let ((mins (list)))
+	(dolist (v2 v2s)
+	  (push (xmin v2) mins))
+	(min-of mins)))
+
+(defun ysmin (v2s)
+  (let ((mins (list)))
+	(dolist (v2 v2s)
+	  (push (ymin v2) mins))
+	(min-of mins)))
+
+(defun xsmax (v2s)
+  (let ((maxs (list)))
+	(dolist (v2 v2s)
+	  (push (xmax v2) maxs))
+	(max-of maxs)))
+
+(defun ysmax (v2s)
+  (let ((maxs (list)))
+	(dolist (v2 v2s)
+	  (push (ymax v2) maxs))
+	(max-of maxs)))
+
+(defun vector+ (v1 v2)
+  (vector (+ (aref v1 0) (aref v2 0)) (+ (aref v1 1) (aref v2 1))))
+
+(defun vector- (v1 v2)
+  (vector (- (aref v1 0) (aref v2 0)) (- (aref v1 1) (aref v2 1))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro rt-lib (name units)
+  `(list (list "RT_HEADER" 5)
 		(list "RT_BGNLIB" #(117 1 11 16 17 41 117 1 11 16 21 29))
-		(list "RT_LIBNAME" name)
-		(list "RT_UNITS" 9.999999999999998d-4 9.999999999999999d-10
-			  units)
+		(list "RT_LIBNAME" ,name)
+		(concatenate 'list (list "RT_UNITS" 9.999999999999998d-4 9.999999999999999d-10) (reverse ,units))
 		"RT_ENDLIB"))
 
-(defun sgk-cell (name elms)
-  (let ((lst (list (list "RT_STRNAME" name) (list "RT_BGNSTR" #(70 1 1 8 0 0 118 2 2 14 29 35)))))
-	(dolist (elm elms)
-	  (push elm lst))
-	(push "RT_ENDSTR" lst)
-	(reverse lst)))
+(defmacro rt-cell (name &rest elms)
+  `(concatenate 'list
+	 (list
+	   (list "RT_BGNSTR" #(70 1 1 8 0 0 118 2 2 14 29 35))
+	   (list "RT_STRNAME" ,name))
+	 ,@elms
+	 (list "RT_ENDSTR")))
 
-(defun sgk-sref (sname strans angle xy)
-  (if (= strans #x4000)
-	(sgk-sref1 sname #x8000 (+ 180.0d0 angle) xy)
-	(sgk-sref1 sname strans angle xy)))
+(defmacro rt-sref (vsref)
+  `(let ((sname (aref ,vsref 0))
+		 (strans (aref ,vsref 1))
+		 (angle (aref ,vsref 2))
+		 (xy (aref ,vsref 3))
+		 )
+	 (cond
+	 ((eql strans #x4000)
+	  (list "RT_SREF" (list "RT_SNAME" sname)
+		   (list "RT_STRANS" #x8000)
+		   (list "RT_ANGLE" (sta-angle (+ 180.0d0 angle)))
+		   (list "RT_XY" xy)
+		   "RT_ENDEL"))
+	 ((eql strans #x0000)
+	  (list "RT_SREF" (list "RT_SNAME" sname)
+		   (list "RT_STRANS" strans)
+		   (list "RT_ANGLE" angle)
+		   (list "RT_XY" xy)
+		   "RT_ENDEL"))
+	 ((eql strans #x8000)
+	  (list "RT_SREF" (list "RT_SNAME" sname)
+		   (list "RT_STRANS" strans)
+		   (list "RT_ANGLE" angle)
+		   (list "RT_XY" xy)
+		   "RT_ENDEL")))))
 
-(defun sgk-sref1 (sname strans angle xy)
-  (list "RT_SREF" (list "RT_SNAME" sname)
-	(list "RT_STRANS" strans)
-	(list "RT_ANGLE" angle)
-	(list "RT_XY" (make-array '(2) :initial-contents xy))
-	"RT_ENDEL"))
-
-(defun sgk-text (layer typ pre strans mag xy text)
-  (list "RT_TEXT"
-	(list "RT_LAYER" layer)
-	(list "RT_TEXTTYPE" typ)
-	(list "RT_PRESENTATION" pre)
-	(list "RT_STRANS" strans)
-	(list "RT_MAG" mag)
-	(list "RT_XY" (make-array '(2) :initial-contents xy))
-	(list "RT_STRING" text)
-	"RT_ENDEL"))
-
-(defun sgk-boundary (layer datatype xy)
-  (list "RT_BOUNDARY"
-		(list "RT_LAYER" layer)
-		(list "RT_DATATYPE" datatype)
-		(list "RT_XY" (make-array (list (length xy)) :initial-contents xy))
+(defmacro rt-boundary (layer v2)
+  `(list "RT_BOUNDARY"
+		(list "RT_LAYER" ,layer)
+		(list "RT_DATATYPE" 0)
+		(list "RT_XY" (v2-v1 ,v2))
 		"RT_ENDEL"))
 
-(defun sgk-boundary-rectangle (layer strans x0 y0 w h)
-  (cond
-	((= strans #x4000) (sgk-boundary-rectangle layer #x0000 x0 y0 (* -1 w) h))
-	((= strans #x8000) (sgk-boundary-rectangle layer #x0000 x0 y0 w (* -1 h)))
-	(t (sgk-boundary layer 0 (list x0 y0
-								   (+ x0 w) y0
-								   (+ x0 w) (+ y0 h)
-								   x0 (+ y0 h)
-								   x0 y0)))))
+(defmacro rt-text (vtext)
+  `(let (
+		 (layer (aref ,vtext 0))
+		 (xy (aref ,vtext 1))
+		 (stri (aref ,vtext 2))
+		 )
+	 (list "RT_TEXT"
+	   (list "RT_LAYER" layer)
+	   (list "RT_TEXTTYPE" 0)
+	   (list "RT_PRESENTATION" 5)
+	   (list "RT_STRANS" 0)
+	   (list "RT_MAG" 0.2d0)
+	   (list "RT_XY" xy)
+	   (list "RT_STRING" stri)
+	   "RT_ENDEL")))
 
-(defun sgk-ls-cell (lib)
-  (dolist (n (get-units lib))
-  (format t "~a~%" (get-str-name n))))
+(defmacro rt-box (layer xmin ymin xmax ymax)
+  `(rt-boundary ,layer (vector
+						 (vector ,xmin ,ymin)
+						 (vector ,xmax ,ymin)
+						 (vector ,xmax ,ymax)
+						 (vector ,xmin ,ymax)
+						 (vector ,xmin ,ymin)
+						 )))
 
-(defun sgk-xy2d (x y)
-  (make-array '(2) :initial-contents (list x y)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun get-units (lib) (cdddr (cadddr lib)))
+
+(defun get-cell (units name)
+  (dolist (str units)
+	(when (string= name (get-cellname str))
+	  (return str))))
+
+(defun get-cellname (str)
+  (cadr (by-car-stri str "RT_STRNAME")))
+
+(defun srefp (elm)
+  (if (string= (car elm) "RT_SREF") t nil))
+
+(defun get-snames (str)
+  (let ((lst (list)))
+	 (dolist (elm str)
+	   (if (listp elm)
+		 (if (srefp elm)
+		   (push (cadr (cadr elm)) lst)
+		   nil) nil))
+	 lst))
+
+(defun get-cellnames (units)
+  (let ((lst (list)))
+	 (dolist (str units)
+	   (push (get-cellname str) lst))
+	 lst))
+
+(defun in-units-p (units cell-name)
+  (let ((names (get-cellnames units)) (rt nil))
+	 (dolist (name names)
+	   (if (string= name cell-name)
+		 (setf rt t)
+		 nil))
+	 rt))
+
+(defun have-sref-p (strname)
+  (if (eql nil (get-snames (get-cell *srcunits* strname)))
+	nil t))
+
+(defun depend-2 (strname)
+(if (have-sref-p strname)
+  (let ((lst0 (get-snames (get-cell *srcunits* strname)))
+		(lst1 (list)))
+	(dolist (sname lst0)
+	  (push sname lst1)
+	  (push (depend-2 sname)
+		lst1))
+	(flatten-tree lst1))
+  (concatenate 'list (list strname) (get-snames (get-cell *srcunits* strname)))))
+
+(defun withdraw (name)
+  (let ((outunits) (names (concatenate 'list (list name) (depend-2 name))))
+	(dolist (name1 names)
+	  (push (if (in-units-p outunits name1) nil (get-cell *srcunits* name1)) outunits))
+	outunits))
+
+(defun sref-sname (sref)
+  (cadr (by-car-stri sref "RT_SNAME")))
+
+(defun sref-strans (sref)
+  (cadr (by-car-stri sref "RT_STRANS")))
+
+(defun sref-angle (sref)
+  (cadr (by-car-stri sref "RT_ANGLE")))
+
+(defun sref-xy (sref)
+  (cadr (by-car-stri sref "RT_XY")))
+
+(defun cell-strname (cell)
+  (cadr (by-car-stri cell "RT_STRNAME")))
+
+(defun vsref-real-xy (vsref pt)
+	(let ((sref1 (rt-sref vsref)) (mir) (ang) (x (aref pt 0)) (y (aref pt 1)) (x0) (y0))
+	  (setf mir (sref-strans sref1))
+	  (setf ang (sref-angle sref1))
+	  (setf x0 (aref (sref-xy sref1) 0))
+	  (setf y0 (aref (sref-xy sref1) 1))
+	  (cond
+		((and (eql #x0000 mir) (eql 0.0d0 ang)) (vector (+ x0 x)			(+ y0 y)))
+		((and (eql #x0000 mir) (eql 90.0d0 ang)) (vector (+ x0 (* -1 y))			(+ y0 x)))
+		((and (eql #x0000 mir) (eql 180.0d0 ang)) (vector (+ x0 (* -1 x))	(+ y0 (* -1 y))))
+		((and (eql #x0000 mir) (eql 270.0d0 ang)) (vector (+ x0 y)			(+ y0 (* -1 x))))
+		((and (eql #x8000 mir) (eql 0.0d0 ang)) (vector (+ x0 x)			(+ y0 (* -1 y))))
+		((and (eql #x8000 mir) (eql 90.0d0 ang)) (vector (+ x0 y) 			(+ y0 x)))
+		((and (eql #x8000 mir) (eql 180.0d0 ang)) (vector (+ x0 (* -1 x))	(+ y0 y)))
+		((and (eql #x8000 mir) (eql 270.0d0 ang)) (vector (+ x0 (* -1 y))	(+ y0 (* -1 x)))))))
+
+(defun vsref-real-v2 (vsref v2)
+  (let ((v2-1 (make-array (list (length v2)))))
+	(dotimes (n (length v2))
+	  (setf (aref v2-1 n) (vsref-real-xy vsref (aref v2 n))))
+	v2-1))
+
+(defun vsref-real-v2s (vsref v2s)
+  (let ((v2s-1 (list)))
+	(dolist (v2 v2s)
+	  (push (vsref-real-v2 vsref v2) v2s-1))
+	v2s-1))
+
+(defun vsref-real-xys (vsref pts)
+  (let ((xys (list)))
+	(dolist (pt pts)
+	  (push (vsref-real-xy vsref pt) xys))
+	xys))
+
+(defun boundaryp (elm)
+  (if (string= (car elm) "RT_BOUNDARY") t nil))
+
+(defun get-boundarys (cell layer)
+  (let ((lst1 (list)))
+	(dolist (elm cell)
+	  (if (listp elm)
+		(if (boundaryp elm)
+		  (if (= layer (cadr (cadr elm)))
+			(push (cadr (cadddr elm)) lst1) nil)
+		  nil) nil))
+	(v1s-v2s lst1)))
+
+(defun cell-xmin (cell)
+  (xsmin (get-boundarys cell *anchor_layer_number*)))
+
+(defun cell-ymin (cell)
+  (ysmin (get-boundarys cell *anchor_layer_number*)))
+
+(defun cell-xmax (cell)
+  (xsmax (get-boundarys cell *anchor_layer_number*)))
+
+(defun cell-ymax (cell)
+  (ysmax (get-boundarys cell *anchor_layer_number*)))
+
+(defun cell-width (cell)
+  (let ((boundarys (get-boundarys cell *anchor_layer_number*)))
+	(abs (- (xsmax boundarys) (xsmin boundarys)))))
+
+(defun cell-high (cell)
+  (let ((boundarys (get-boundarys cell *anchor_layer_number*)))
+	(abs (- (ysmax boundarys) (ysmin boundarys)))))
+
+(defun vsref-xmin (vsref)
+  (xsmin (vsref-real-v2s vsref (get-boundarys (get-cell *srcunits* (aref vsref 0)) *anchor_layer_number*))))
+
+(defun vsref-ymin (vsref)
+  (ysmin (vsref-real-v2s vsref (get-boundarys (get-cell *srcunits* (aref vsref 0)) *anchor_layer_number*))))
+
+(defun vsref-xmax (vsref)
+  (xsmax (vsref-real-v2s vsref (get-boundarys (get-cell *srcunits* (aref vsref 0)) *anchor_layer_number*))))
+
+(defun vsref-ymax (vsref)
+  (ysmax (vsref-real-v2s vsref (get-boundarys (get-cell *srcunits* (aref vsref 0)) *anchor_layer_number*))))
+
+(defun vsrefs-xmin (vsrefs)
+  (let ((mins (list)))
+	(dolist (vsref vsrefs)
+	  (push (vsref-xmin vsref) mins))
+	(min-of mins)))
+
+(defun vsrefs-ymin (vsrefs)
+  (let ((mins (list)))
+	(dolist (vsref vsrefs)
+	  (push (vsref-ymin vsref) mins))
+	(min-of mins)))
+
+(defun vsrefs-xmax (vsrefs)
+  (let ((maxs (list)))
+	(dolist (vsref vsrefs)
+	  (push (vsref-xmax vsref) maxs))
+	(max-of maxs)))
+
+(defun vsrefs-ymax (vsrefs)
+  (let ((maxs (list)))
+	(dolist (vsref vsrefs)
+	  (push (vsref-ymax vsref) maxs))
+	(max-of maxs)))
+
+(defun textp (elm)
+  (if (string= (car elm) "RT_TEXT") t nil))
+
+(defun get-texts (cell layer stri)
+  (let ((lst1 (list)))
+	(dolist (elm cell)
+	  (if (listp elm)
+		(if (textp elm)
+		  (if (and
+				(= layer (cadr (by-car-stri elm "RT_LAYER")))
+				(string= stri (cadr (by-car-stri elm "RT_STRING"))))
+			(push elm lst1) nil)
+		  nil) nil))
+	lst1))
+
+(defun get-pins (cell stri)
+  (let ((lst1 (list)))
+	(dolist (elm cell)
+	  (if (listp elm)
+		(if (textp elm)
+		  (if (string= stri (cadr (by-car-stri elm "RT_STRING")))
+			(push elm lst1) nil)
+		  nil) nil))
+	lst1))
+
+(defun get-texts-xy (cell layer stri)
+  (let ((xys (list)) (texts (get-texts cell layer stri)))
+	(dolist (text texts)
+	  (push (cadr (by-car-stri text "RT_XY")) xys))
+	xys))
+
+(defun get-pins-xy (cell stri)
+  (let ((xys (list)) (texts (get-pins cell stri)))
+	(dolist (text texts)
+	  (push (cadr (by-car-stri text "RT_XY")) xys))
+	xys))
+
+(defun get-pins-layer (cell stri)
+  (let ((xys (list)) (texts (get-pins cell stri)))
+	(dolist (text texts)
+	  (push (cadr (by-car-stri text "RT_LAYER")) xys))
+	xys))
+
+(defun get-pinlists (cell stris)
+  (let ((pinlists (list)))
+	(dolist (stri stris)
+	  (push (get-pins cell stri) pinlists))
+	pinlists))
+
+(defun get-pinlists-xys (cell stris)
+  (let ((pinlists (list)))
+	(dolist (stri stris)
+	  (push (get-pins-xy cell stri) pinlists))
+	pinlists))
+
+(defun get-pinlists-layers (cell stris)
+  (let ((pinlists (list)))
+	(dolist (stri stris)
+	  (push (get-pins-layer cell stri) pinlists))
+	pinlists))
+
+(defun rt-srefs (vsrefs)
+  (let ((srefs (list)))
+	(dolist (vsref vsrefs)
+	  (push (rt-sref vsref) srefs))
+	srefs))
+
+(defun rt-texts (vtexts)
+  (let ((texts (list)))
+	(dolist (vtext vtexts)
+	  (push (rt-text vtext) texts))
+	texts))
+
+(defun cell-1 (name vsrefs vtexts)
+  (rt-cell
+	name
+	(concatenate 'list
+	(list
+	  (rt-box *anchor_layer_number*
+			  (vsrefs-xmin vsrefs)
+			  (vsrefs-ymin vsrefs)
+			  (vsrefs-xmax vsrefs)
+			  (vsrefs-ymax vsrefs)))
+	(rt-srefs vsrefs)
+	(rt-texts vtexts))))
+
+(defun combine-list-layers-list-xys (list-layers list-xys)
+  (let ((vector-layers (make-array (list (length list-layers)) :initial-contents list-layers))
+		(vector-xys (make-array (list (length list-xys)) :initial-contents list-xys))
+		(lst (list)))
+	(if (= (length vector-layers) (length vector-xys))
+	  (dotimes (n (length vector-xys))
+		(push (concatenate 'list (list (aref vector-layers n)) (list (aref vector-xys n))) lst))
+	  nil)
+	lst))
+
+(defun get-vsref-vtexts (vsref pinnames mapnames)
+  (let ((combine-list (combine-list-layers-list-xys
+						(get-pinlists-layers (get-cell *srcunits* (aref vsref 0)) pinnames)
+						(get-pinlists-xys (get-cell *srcunits* (aref vsref 0)) pinnames)))
+		(vtexts (list))
+		(vector-mapnames (make-array (list (length mapnames)) :initial-contents mapnames))
+		(n 0)
+		(mapname)
+		(vlayers)
+		(vxys))
+	(dolist (combine combine-list)
+	  (setf mapname (aref vector-mapnames n))
+	  (setf vlayers (make-array (list (length (car combine))) :initial-contents (car combine)))
+	  (setf vxys (make-array (list (length (cadr combine))) :initial-contents (cadr combine)))
+	  (dotimes (n (length vxys))
+		(push (vector (aref vlayers n) (vsref-real-xy vsref (aref vxys n)) mapname) vtexts))
+	  (incf n))
+	vtexts))
+
+;;instance:(vector vsref (sub-pinlist "XPB0" "XPB1" ... ) (top-pinlist "shit0" "shit1" ... ))  !! NOTICE !!
+
+(defun cell-2 (name instances)
+  (let ((vsrefs (list))
+		(vtexts (list)))
+	(dolist (instance instances)
+	  (push (aref instance 0) vsrefs)
+	  (setf vtexts (concatenate 'list vtexts
+								(get-vsref-vtexts (aref instance 0)
+												  (aref instance 1)
+												  (aref instance 2)))))
+	(cell-1 name vsrefs vtexts)))
+
+(defun relocate-1 (instance1s)
+  (let ((instances (list))
+		(vsrefs (list))
+		(xymin)
+		(n 0)
+		(vvsrefs (list)))
+	(dolist (instance1 instance1s)
+	  (push (aref instance1 0) vsrefs))
+	(setf vsrefs (reverse vsrefs))
+	(setf xymin (vector (vsrefs-xmin vsrefs) (vsrefs-ymin vsrefs)))
+	(dolist (vsref vsrefs)
+	  (setf (aref vsref 3) (vector- (aref vsref 3) xymin))
+	  (push vsref vvsrefs))
+	(setf vvsrefs (make-array (list (length vvsrefs)) :initial-contents (reverse vvsrefs)))
+	(dolist (instance1 instance1s)
+	  (setf (aref instance1 0) (aref vvsrefs n))
+	  (push instance1 instances)
+	  (incf n))
+	(reverse instances)))
+
+(defun cell-3 (name instance1s)
+  (cell-2 name (relocate-1 instance1s)))
