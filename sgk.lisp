@@ -990,6 +990,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun lib (name units)
+  (rt-lib name units))
+
 (defun get-units (lib) (cdddr (cadddr lib)))
 
 (defun get-cell (units name)
@@ -1280,7 +1283,7 @@
 	  (incf n))
 	vtexts))
 
-;;instance:(vector vsref (sub-pinlist "XPB0" "XPB1" ... ) (top-pinlist "shit0" "shit1" ... ))  !! NOTICE !!
+;;	instance:	(vector vsref (sub-pinlist "XPB0" "XPB1" ... ) (top-pinlist "shit0" "shit1" ... ))  !! NOTICE !!
 
 (defun cell-2 (name instances)
   (let ((vsrefs (list))
@@ -1314,4 +1317,50 @@
 	(reverse instances)))
 
 (defun cell-3 (name instance1s)
-  (cell-2 name (relocate-1 instance1s)))
+  (cell-2 name (relocate-1 (relocate-2 instance1s))))
+
+(defun relocate-2 (instance1s)
+  (let ((instances (list))
+		(vsrefs (list))
+		(xymin)
+		(n 0)
+		(vvsrefs (list))
+		(vsref.h)
+		(vsref.w))
+	(dolist (instance1 instance1s)
+	  (push (aref instance1 0) vsrefs))
+	(setf vsrefs (reverse vsrefs))
+	(setf xymin (vector (vsrefs-xmin vsrefs) (vsrefs-ymin vsrefs)))
+	(dolist (vsref vsrefs)
+	  (setf vsref.h (cell-high (get-cell *srcunits* (aref vsref 0))))
+	  (setf vsref.w (cell-width (get-cell *srcunits* (aref vsref 0))))
+;	  (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 0)))
+	  (case (aref vsref 1)
+		(#x0000 (case (aref vsref 2)
+				  (0.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 0))))
+				  (90.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector vsref.h 0))))
+				  (180.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector vsref.w vsref.h))))
+				  (270.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 vsref.w))))
+				  ))
+		(#x4000 (case (aref vsref 2)
+				  (0.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector vsref.w 0))))
+				  (90.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector vsref.h vsref.w))))
+				  (180.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 vsref.h))))
+				  (270.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 0))))
+				  ))
+		(#x8000 (case (aref vsref 2)
+				  (180.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector vsref.w 0))))
+				  (270.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector vsref.h vsref.w))))
+				  (0.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 vsref.h))))
+				  (90.0d0 (setf (aref vsref 3) (vector+ (aref vsref 3) (vector 0 0))))
+				  ))
+		)
+;	  (setf (aref vsref 3) (vector- (aref vsref 3) xymin))
+	  (push vsref vvsrefs))
+	(setf vvsrefs (make-array (list (length vvsrefs)) :initial-contents (reverse vvsrefs)))
+	(dolist (instance1 instance1s)
+	  (setf (aref instance1 0) (aref vvsrefs n))
+	  (push instance1 instances)
+	  (incf n))
+	(reverse instances)))
+
