@@ -1283,6 +1283,27 @@
 	  (incf n))
 	vtexts))
 
+(defun get-rt-paths (cell layer)
+  (let ((paths (list)))
+	(dolist (elm cell)
+	  (if (listp elm)
+		(if (string= (car elm) "RT_PATH") 
+		  (if (= (cadr (by-car-stri elm "RT_LAYER")) layer)
+			(push elm paths) nil) nil) nil))
+	paths))
+
+(defun get-paths (cell layer)
+  (let ((rt-paths (get-rt-paths cell layer))
+		(paths (list)))
+	(dolist (rt-path rt-paths)
+	  (push (vector (cadr (by-car-stri rt-path "RT_WIDTH"))
+					(v1-v2 (cadr (by-car-stri rt-path "RT_XY")))) paths))
+	paths))
+
+(defun get-metals (cell layer)
+  (concatenate 'list (get-boundarys cell layer)
+			   (get-paths cell layer)))
+
 ;;	instance:	(vector vsref (sub-pinlist "XPB0" "XPB1" ... ) (top-pinlist "shit0" "shit1" ... ))  !! NOTICE !!
 
 (defun cell-2 (name instances)
