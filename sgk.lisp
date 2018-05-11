@@ -913,6 +913,17 @@
 (defun vector- (v1 v2)
   (vector (- (aref v1 0) (aref v2 0)) (- (aref v1 1) (aref v2 1))))
 
+(defun vector*num (v1 num)
+  (vector (* (aref v1 0) num) (* (aref v1 1) num)))
+
+(defun vector/num (v1 num)
+  (vector (div (aref v1 0) num) (* (aref v1 1) num)))
+
+(defun div (a b)
+  (if (= 0 b)
+	nil
+	(/ a b)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro rt-lib (name units)
@@ -1490,4 +1501,34 @@
 		(p0 (aref (aref inst1 0) 3)))
 	(setf (aref vinst 3) (vector+ p0 (vector (- inst1.w inst2.w) (* -1 inst2.h))))
 	(inst vinst)))
+
+(defun p-on-stright (p p0 k)
+  (let ((dp (vector- p p0)))
+	(if (eql (div (aref dp 1) (aref dp 0)) nil)
+	  (p-on-stright p (vector (+ (aref p0 0) 1) (+ (aref p0 1) k)) k)
+	  (if (eql (div (aref dp 1) (aref dp 0)) k)
+		t nil))))
+
+(defun p-on-line (p p1 p2)
+  (let ((k)
+		(dp (vector- p2 p1)))
+	(setf k (div (aref dp 1) (aref dp 0)))
+	(if (p-on-stright p p1 k)
+	  (if (and (and (>= (aref p 0) (min (aref p1 0) (aref p2 0))) (<= (aref p 0) (max (aref p1 0) (aref p2 0))))
+			   (and (>= (aref p 1) (min (aref p1 1) (aref p2 1))) (<= (aref p 1) (max (aref p1 1) (aref p2 1)))))
+		t nil)
+	  nil)))
+
+(defun overlay (vsref stri)
+  (let ((text-xy (get-pins-xy (get-cell *srcunits* (aref vsref 0)) stri)))
+	(if (= 1 (length text-xy))
+	  (setf text-xy (car text-xy)) nil)
+	(setf (aref vsref 3) (vector- (aref vsref 3) text-xy))
+	(rt-sref vsref)))
+
+(defun overlay-1 (sname strans angle cell stri stri0)
+  (overlay
+	(vector sname strans angle
+			(car (get-pins-xy cell stri0)))
+	stri))
 
