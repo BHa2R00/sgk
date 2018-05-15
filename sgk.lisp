@@ -919,10 +919,16 @@
 (defun vector/num (v1 num)
   (vector (div (aref v1 0) num) (* (aref v1 1) num)))
 
+(defun vector-dot (v1 v2)
+  (vector (* (aref v1 0) (aref v2 0)) (* (aref v1 1) (aref v2 1))))
+
 (defun div (a b)
   (if (= 0 b)
 	nil
 	(/ a b)))
+
+(defun div1 (a b)
+  (floor (float (div a b))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1523,7 +1529,13 @@
   (let ((text-xy (get-pins-xy (get-cell *srcunits* (aref vsref 0)) stri)))
 	(if (= 1 (length text-xy))
 	  (setf text-xy (car text-xy)) nil)
-	(setf (aref vsref 3) (vector- (aref vsref 3) text-xy))
+;	(setf (aref vsref 3) (vector- (aref vsref 3) text-xy))
+	(case (aref vsref 2)
+	  (0.0d0 (setf (aref vsref 3) (vector- (aref vsref 3) text-xy)))
+	  (90.0d0 (setf (aref vsref 3) (vector- (aref vsref 3) (reverse (vector-dot text-xy (vector 1 -1))))))
+	  (270.0d0 (setf (aref vsref 3) (vector- (aref vsref 3) (reverse (vector-dot text-xy (vector 1 -1))))))
+	  (180.0d0 (setf (aref vsref 3) (vector- (aref vsref 3) (vector-dot text-xy (vector -1 -1)))))
+	  )
 	(rt-sref vsref)))
 
 (defun overlay-1 (sname strans angle cell stri stri0)
@@ -1531,4 +1543,7 @@
 	(vector sname strans angle
 			(car (get-pins-xy cell stri0)))
 	stri))
+
+;(defun overlay-2 (sname strans angle cellname stri stri0)
+;  (push (overlay-1 sname strans angle (get-cell *srcunits* cellname) stri stri0) (cdddr (get-cell *srcunits* cellname))))
 
